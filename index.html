@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Open Noise Meter</title>
+  <meta name="description" content="Freier Schallpegelmesser mit dB(A/C/Z), Leq, Spektrum und CSV-Export – Open Source, läuft im Browser.">
+  <meta name="theme-color" content="#0b1117" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Noise Meter">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="28" height="28">
+      <span>Open Noise Meter</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="calib-badge" class="badge" type="button"></button>
+      <button id="btn-start" class="btn btn-primary btn-start" type="button">
+        <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+        <svg class="icon icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+        <span id="btn-start-label" data-i18n="start">Start</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden>
+    <span id="banner-text"></span>
+    <button id="banner-close" class="banner-close" type="button" data-i18n-aria="close" aria-label="Schließen">×</button>
+  </div>
+
+  <main>
+    <!-- Level meter -->
+    <section id="view-meter" class="view" data-view="meter">
+      <div class="card readout-card">
+        <div class="readout-head">
+          <span id="lvl-name" class="metric-name">LAF</span>
+          <span id="demo-badge" class="badge badge-demo" hidden></span>
+          <span id="state-hint" class="muted state-hint" data-i18n="tapStart">Tippe auf Start, um zu messen</span>
+        </div>
+        <div class="readout" aria-live="off">
+          <span id="lvl-value" class="big-number">--,-</span>
+          <span class="big-unit">dB(<span id="lvl-unit">A</span>)</span>
+        </div>
+        <div class="levelbar" id="levelbar" aria-hidden="true">
+          <div class="levelbar-track">
+            <div class="levelbar-fill"></div>
+            <div class="levelbar-max"></div>
+          </div>
+          <div class="levelbar-scale"></div>
+        </div>
+        <div class="controls">
+          <div class="control">
+            <span class="control-label" data-i18n="frequencyWeighting">Frequenzbewertung</span>
+            <div class="seg" id="seg-weighting" role="radiogroup">
+              <button type="button" role="radio" data-value="A">A</button>
+              <button type="button" role="radio" data-value="C">C</button>
+              <button type="button" role="radio" data-value="Z">Z</button>
+            </div>
+          </div>
+          <div class="control">
+            <span class="control-label" data-i18n="timeWeighting">Zeitbewertung</span>
+            <div class="seg" id="seg-time" role="radiogroup">
+              <button type="button" role="radio" data-value="F" data-i18n="fast">Fast</button>
+              <button type="button" role="radio" data-value="S" data-i18n="slow">Slow</button>
+              <button type="button" role="radio" data-value="I" data-i18n="impulse">Impulse</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-label" id="st-leq-label">LAeq</div><div class="stat-value" id="st-leq">–</div></div>
+        <div class="stat"><div class="stat-label" id="st-max-label">LAFmax</div><div class="stat-value" id="st-max">–</div></div>
+        <div class="stat"><div class="stat-label" id="st-min-label">LAFmin</div><div class="stat-value" id="st-min">–</div></div>
+        <div class="stat"><div class="stat-label">LCpeak</div><div class="stat-value" id="st-peak">–</div></div>
+        <div class="stat"><div class="stat-label" data-i18n="duration">Dauer</div><div class="stat-value" id="st-duration">0:00</div></div>
+        <button id="btn-reset" class="stat stat-button" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" /></svg>
+          <span data-i18n="reset">Zurücksetzen</span>
+        </button>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <h2 data-i18n="history">Verlauf</h2>
+          <div class="seg seg-small" id="seg-range" role="radiogroup">
+            <button type="button" role="radio" data-value="60">60 s</button>
+            <button type="button" role="radio" data-value="300">5 min</button>
+            <button type="button" role="radio" data-value="all" data-i18n="rangeAll">Messung</button>
+          </div>
+        </div>
+        <canvas id="history-canvas" class="chart" role="img" data-i18n-aria="historyAria" aria-label="Pegelverlauf"></canvas>
+      </div>
+    </section>
+
+    <!-- Spectrum -->
+    <section id="view-spectrum" class="view" data-view="spectrum" hidden>
+      <div class="card">
+        <div class="card-head">
+          <div class="seg" id="seg-spec" role="radiogroup">
+            <button type="button" role="radio" data-value="fft">FFT</button>
+            <button type="button" role="radio" data-value="bands" data-i18n="thirdOctave">Terz</button>
+            <button type="button" role="radio" data-value="spectrogram" data-i18n="spectrogram">Spektrogramm</button>
+          </div>
+        </div>
+        <div class="spec-readout">
+          <span data-i18n="dominant">Dominante Frequenz</span>
+          <strong id="spec-dom">–</strong>
+        </div>
+        <canvas id="spectrum-canvas" class="chart chart-tall" role="img" data-i18n-aria="spectrumAria" aria-label="Frequenzspektrum"></canvas>
+        <div class="spec-options">
+          <label class="check"><input type="checkbox" id="opt-specweight"> <span id="opt-specweight-label">dB(A) anwenden</span></label>
+          <label class="check" id="opt-peakhold-wrap"><input type="checkbox" id="opt-peakhold"> <span data-i18n="peakHold">Peak-Hold</span></label>
+          <button id="btn-peak-reset" class="btn btn-ghost btn-small" type="button" data-i18n="resetPeak">Peak zurücksetzen</button>
+        </div>
+        <p class="muted small" data-i18n="spectrumNote">Pegel pro Frequenzlinie bzw. Terzband. Tiefe Terzbänder sind durch die FFT-Auflösung nur grob.</p>
+      </div>
+    </section>
+
+    <!-- Measurement -->
+    <section id="view-session" class="view" data-view="session" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="currentMeasurement">Aktuelle Messung</h2>
+          <span id="sess-status" class="muted"></span>
+        </div>
+        <dl class="summary" id="sess-summary"></dl>
+        <div class="actions">
+          <button id="btn-export" class="btn" type="button" data-i18n="exportCsv">CSV exportieren</button>
+          <button id="btn-copy" class="btn" type="button" data-i18n="copySummary">Zusammenfassung kopieren</button>
+          <button id="btn-save" class="btn btn-primary" type="button" data-i18n="save">Speichern</button>
+          <button id="btn-new" class="btn btn-ghost" type="button" data-i18n="newMeasurement">Neue Messung</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2 data-i18n="savedMeasurements">Gespeicherte Messungen</h2>
+        <ul id="saved-list" class="saved-list"></ul>
+        <p id="saved-empty" class="muted" data-i18n="noSaved">Noch keine gespeicherten Messungen.</p>
+        <p class="muted small" data-i18n="savedNote">Gespeichert wird nur in diesem Browser auf diesem Gerät.</p>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="view-settings" class="view" data-view="settings" hidden>
+      <div class="card">
+        <h2 data-i18n="calibration">Kalibrierung</h2>
+        <p class="muted" data-i18n="calibrationIntro">Handy-Mikrofone unterscheiden sich um mehrere dB. Vergleiche einmal mit einem Referenz-Messgerät (oder einer kalibrierten App auf demselben Gerät) und übernimm den Wert.</p>
+        <div class="field">
+          <span class="field-label" data-i18n="offset">Offset</span>
+          <div class="stepper">
+            <button id="cal-minus" class="btn btn-small" type="button" aria-label="-0.5 dB">−</button>
+            <output id="cal-offset" class="stepper-value">100,0 dB</output>
+            <button id="cal-plus" class="btn btn-small" type="button" aria-label="+0.5 dB">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="cal-ref" data-i18n="referenceLevel">Referenzpegel</label>
+          <div class="inline">
+            <input id="cal-ref" class="input input-num" type="number" inputmode="decimal" step="0.1" min="20" max="140" value="94">
+            <span id="cal-ref-unit" class="muted">dB(A)</span>
+            <button id="cal-run" class="btn btn-primary" type="button" data-i18n="calibrateNow">5 s messen &amp; übernehmen</button>
+          </div>
+        </div>
+        <div id="cal-progress" class="progress" hidden><div class="progress-fill"></div></div>
+        <p id="cal-status" class="muted small"></p>
+        <button id="cal-reset" class="btn btn-ghost btn-small" type="button" data-i18n="calibrationReset">Auf Standard zurücksetzen</button>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="display">Anzeige</h2>
+        <div class="field">
+          <label class="field-label" for="set-lang" data-i18n="language">Sprache</label>
+          <select id="set-lang" class="input">
+            <option value="auto" data-i18n="auto">Automatisch</option>
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="set-theme" data-i18n="theme">Design</label>
+          <select id="set-theme" class="input">
+            <option value="auto" data-i18n="auto">Automatisch</option>
+            <option value="light" data-i18n="themeLight">Hell</option>
+            <option value="dark" data-i18n="themeDark">Dunkel</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label" data-i18n="thresholds">Farbschwellen</span>
+          <div class="inline">
+            <label class="inline-label"><span class="dot dot-warn"></span><span data-i18n="warnFrom">gelb ab</span>
+              <input id="set-warn" class="input input-num" type="number" inputmode="numeric" min="30" max="130" step="1"></label>
+            <label class="inline-label"><span class="dot dot-bad"></span><span data-i18n="dangerFrom">rot ab</span>
+              <input id="set-danger" class="input input-num" type="number" inputmode="numeric" min="30" max="140" step="1"></label>
+            <span class="muted">dB</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="set-fft" data-i18n="fftSize">FFT-Größe</label>
+          <select id="set-fft" class="input">
+            <option value="2048">2048</option>
+            <option value="4096">4096</option>
+            <option value="8192">8192</option>
+            <option value="16384">16384</option>
+            <option value="32768">32768</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="set-wakelock"> <span data-i18n="keepAwake">Bildschirm während der Messung anlassen</span></label>
+        </div>
+      </div>
+
+      <div class="card info" id="info">
+        <h2 data-i18n="about">Über diese App</h2>
+        <div data-i18n-html="infoBody"></div>
+        <p class="muted small">
+          <span data-i18n="version">Version</span> <span id="app-version"></span> ·
+          <a id="repo-link" href="https://github.com/" target="_blank" rel="noopener">GitHub</a> ·
+          <span data-i18n="license">MIT-Lizenz</span>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" role="tablist">
+    <button type="button" role="tab" data-tab="meter">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0" /><path d="M12 17l4-5" /></svg>
+      <span data-i18n="tabMeter">Pegel</span>
+    </button>
+    <button type="button" role="tab" data-tab="spectrum">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-7M10 20V6M15 20v-9M20 20V9" /></svg>
+      <span data-i18n="tabSpectrum">Spektrum</span>
+    </button>
+    <button type="button" role="tab" data-tab="session">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6M9 13h6M9 17h3" /></svg>
+      <span data-i18n="tabSession">Messung</span>
+    </button>
+    <button type="button" role="tab" data-tab="settings">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>
+      <span data-i18n="tabSettings">Einstellungen</span>
+    </button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

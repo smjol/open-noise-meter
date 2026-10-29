@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Noise Meter – Tests</title>
+  <style>
+    :root { color-scheme: light dark; --ok: #1f9d55; --bad: #d64545; }
+    body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 16px; background: Canvas; color: CanvasText; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    #summary { font-weight: 600; margin-bottom: 12px; }
+    #summary.ok { color: var(--ok); }
+    #summary.bad { color: var(--bad); }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 4px 0; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); }
+    li.pass::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+    li.fail::before { content: "✗ "; color: var(--bad); font-weight: 700; }
+    li .detail { display: block; color: var(--bad); font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Open Noise Meter – DSP tests</h1>
+  <div id="summary">Running…</div>
+  <ul id="results"></ul>
+  <script src="../js/worklet/level-processor.js"></script>
+  <script type="module" src="./dsp.test.js"></script>
+</body>
+</html>
